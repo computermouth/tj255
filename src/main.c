@@ -49,7 +49,8 @@ static RenderTexture2D target = { 0 };  // Render texture to render our game
 static void UpdateDrawFrame(void);      // Update and Draw one frame
 
 Material cube_mat = { 0 };
-
+Model level_model = { 0 };
+Camera3D camera = { 0 };
 //------------------------------------------------------------------------------------
 // Program main entry point
 //------------------------------------------------------------------------------------
@@ -66,6 +67,14 @@ int main(void)
     Texture cube_tex = LoadTexture("res/grass_tile.png");
     cube_mat = LoadMaterialDefault();
     SetMaterialTexture(&cube_mat, MATERIAL_MAP_DIFFUSE, cube_tex);
+
+    level_model = LoadModel("res/level.glb");
+    SetMaterialTexture(&level_model.materials[0], MATERIAL_MAP_DIFFUSE, cube_tex);
+
+    camera.fovy = 45;
+    camera.position = (Vector3){5, 5, 5};
+    camera.projection = CAMERA_PERSPECTIVE;
+    camera.up = (Vector3){0,1,0};
     
     // Render texture to draw full screen, enables screen scaling
     // NOTE: If screen is scaled, mouse input should be scaled proportionally
@@ -117,18 +126,13 @@ void UpdateDrawFrame(void)
         
         // TODO: Draw your game screen here
         DrawRectangle(10, 10, screenWidth - 20, screenHeight - 20, SKYBLUE);
-
-        Camera3D camera = { 0 };
-        camera.fovy = 45;
-        camera.position = (Vector3){5, 5, 5};
-        camera.projection = CAMERA_PERSPECTIVE;
-        camera.up = (Vector3){0,1,0};
-        // camera.target = (Vector3){10, 0, 0};
         
         BeginMode3D(camera);
-            DrawMesh(GenMeshCube(1, 1, 1), cube_mat, MatrixIdentity());
+            DrawModel(level_model, (Vector3){0}, .5, WHITE);
+            DrawModelWires(level_model, (Vector3){0}, .5, BLACK);
+            // DrawMesh(GenMeshCube(1, 1, 1), cube_mat, MatrixIdentity());
             // DrawCube((Vector3){0}, 1, 1, 1, RED);
-            DrawGrid(10, 1);
+            // DrawGrid(10, 1);
         EndMode3D();
         
     EndTextureMode();
