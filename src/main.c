@@ -13,6 +13,7 @@
 
 #include "raylib.h"
 #include "raymath.h"
+#include "res.h"
 
 #if defined(PLATFORM_WEB)
     #define CUSTOM_MODAL_DIALOGS            // Force custom modal dialogs usage
@@ -48,8 +49,6 @@ static RenderTexture2D target = { 0 };  // Render texture to render our game
 //----------------------------------------------------------------------------------
 static void UpdateDrawFrame(void);      // Update and Draw one frame
 
-Material cube_mat = { 0 };
-Model level_model = { 0 };
 Camera3D camera = { 0 };
 //------------------------------------------------------------------------------------
 // Program main entry point
@@ -63,16 +62,12 @@ int main(void)
     // Initialization
     //--------------------------------------------------------------------------------------
     InitWindow(screenWidth, screenHeight, "crayjam");
-    
-    Texture cube_tex = LoadTexture("res/grass_tile.png");
-    cube_mat = LoadMaterialDefault();
-    SetMaterialTexture(&cube_mat, MATERIAL_MAP_DIFFUSE, cube_tex);
 
-    level_model = LoadModel("res/level.glb");
-    SetMaterialTexture(&level_model.materials[0], MATERIAL_MAP_DIFFUSE, cube_tex);
+    res_init();
 
     camera.fovy = 45;
-    camera.position = (Vector3){5, 5, 5};
+    camera.position = (Vector3){1, 10, 1};
+    camera.target = Vector3Normalize((Vector3){-1, -10, -1});
     camera.projection = CAMERA_PERSPECTIVE;
     camera.up = (Vector3){0,1,0};
     
@@ -80,6 +75,8 @@ int main(void)
     // NOTE: If screen is scaled, mouse input should be scaled proportionally
     target = LoadRenderTexture(screenWidth, screenHeight);
     SetTextureFilter(target.texture, TEXTURE_FILTER_BILINEAR);
+
+    DisableCursor();
 
 #if defined(PLATFORM_WEB)
     emscripten_set_main_loop(UpdateDrawFrame, 60, 1);
@@ -117,6 +114,13 @@ void UpdateDrawFrame(void)
     // TODO: Update variables / Implement example logic at this point
     //----------------------------------------------------------------------------------
 
+    Vector2 md = GetMouseDelta();
+
+    float y = md.x * 1.0 * GetFrameTime();
+    float p = md.y * 1.0 * GetFrameTime();
+    Vector3 move = {0};
+    UpdateCameraPro(&camera, move, (Vector3){y, p, 0}, 0);
+
     // Draw
     //----------------------------------------------------------------------------------
     // Render game screen to a texture, 
@@ -130,9 +134,6 @@ void UpdateDrawFrame(void)
         BeginMode3D(camera);
             DrawModel(level_model, (Vector3){0}, .5, WHITE);
             DrawModelWires(level_model, (Vector3){0}, .5, BLACK);
-            // DrawMesh(GenMeshCube(1, 1, 1), cube_mat, MatrixIdentity());
-            // DrawCube((Vector3){0}, 1, 1, 1, RED);
-            // DrawGrid(10, 1);
         EndMode3D();
         
     EndTextureMode();
