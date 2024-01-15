@@ -13,7 +13,9 @@
 
 #include "raylib.h"
 #include "raymath.h"
+
 #include "res.h"
+#include <math.h>
 
 #if defined(PLATFORM_WEB)
     #define CUSTOM_MODAL_DIALOGS            // Force custom modal dialogs usage
@@ -66,9 +68,8 @@ int main(void)
     res_init();
 
     camera.fovy = 45;
-    camera.position = (Vector3){1, 10, 1};
-    camera.target = Vector3Normalize((Vector3){-1, -10, -1});
     camera.projection = CAMERA_PERSPECTIVE;
+    camera.position = (Vector3){ 1, 10, 1 };
     camera.up = (Vector3){0,1,0};
     
     // Render texture to draw full screen, enables screen scaling
@@ -103,6 +104,12 @@ int main(void)
     return 0;
 }
 
+bool grounded = false;
+float grav = 0;
+float yaw = 0;
+float pitch = 0;
+Vector3 position = { 1, 10, 1 };
+
 //--------------------------------------------------------------------------------------------
 // Module functions definition
 //--------------------------------------------------------------------------------------------
@@ -115,11 +122,51 @@ void UpdateDrawFrame(void)
     //----------------------------------------------------------------------------------
 
     Vector2 md = GetMouseDelta();
+    float mouse_spd = 0.0675;
+    yaw = fmodf(yaw - md.x * mouse_spd * GetFrameTime(), 2 * PI);
+    pitch = Clamp(pitch - md.y * mouse_spd * GetFrameTime(), -1, 1);
 
-    float y = md.x * 1.0 * GetFrameTime();
-    float p = md.y * 1.0 * GetFrameTime();
-    Vector3 move = {0};
-    UpdateCameraPro(&camera, move, (Vector3){y, p, 0}, 0);
+    // player acceleration (input)
+    float player_spd = 10.0;
+    Vector3 a = Vector3Multiply(
+        Vector3RotateByAxisAngle(
+            (Vector3){
+                IsKeyDown(KEY_D) - IsKeyDown(KEY_A),
+                0,
+                IsKeyDown(KEY_S) - IsKeyDown(KEY_W),
+            },
+            (Vector3){0,1,0},
+            yaw
+        ),
+        (Vector3){
+            player_spd * GetFrameTime() * (1.0 - (!grounded) * 0.3),
+            player_spd * GetFrameTime() * (1.0 - (!grounded) * 0.3),
+            player_spd * GetFrameTime() * (1.0 - (!grounded) * 0.3),
+        }
+    );
+
+    if (camera.position.y <= 2){
+        camera.position.y = 2;
+        grounded = true;
+        grav = 0;
+    }
+
+    if (!grounded)
+        grav -= 9.8 * GetFrameTime();
+
+    Vector3 move = Vector3Add((Vector3){0, grav, 0}, a);
+    camera.position = Vector3Add(camera.position, move);
+
+    // // Initialize the forward, right, and up vectors
+    Vector3 forward = {0, 0, -1};
+    Vector3 right = {1, 0, 0};
+    Vector3 up = {0, 1, 0};
+
+    forward = Vector3RotateByAxisAngle(forward, up, yaw);
+    right = Vector3RotateByAxisAngle(right, up, yaw);
+    forward = Vector3RotateByAxisAngle(forward, right, pitch);
+
+    camera.target = Vector3Add(camera.position, forward);
 
     // Draw
     //----------------------------------------------------------------------------------
