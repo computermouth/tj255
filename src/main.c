@@ -13,6 +13,7 @@
 
 #include "raylib.h"
 #include "raymath.h"
+#include "rcamera.h"
 
 #include "res.h"
 #include <math.h>
@@ -123,27 +124,26 @@ void UpdateDrawFrame(void)
 
     Vector2 md = GetMouseDelta();
     float mouse_spd = 0.0675;
-    yaw = fmodf(yaw - md.x * mouse_spd * GetFrameTime(), 2 * PI);
-    pitch = Clamp(pitch - md.y * mouse_spd * GetFrameTime(), -1, 1);
+    CameraYaw(&camera, -md.x * mouse_spd * GetFrameTime(), false);
+    CameraPitch(&camera, -md.y * mouse_spd * GetFrameTime(), true, false, false);
 
     // player acceleration (input)
     float player_spd = 10.0;
     Vector3 a = Vector3Multiply(
-        Vector3RotateByAxisAngle(
-            (Vector3){
-                IsKeyDown(KEY_D) - IsKeyDown(KEY_A),
-                0,
-                IsKeyDown(KEY_S) - IsKeyDown(KEY_W),
-            },
-            (Vector3){0,1,0},
-            yaw
-        ),
+        (Vector3){
+            IsKeyDown(KEY_D) - IsKeyDown(KEY_A),
+            0,
+            IsKeyDown(KEY_W) - IsKeyDown(KEY_S),
+        },
         (Vector3){
             player_spd * GetFrameTime() * (1.0 - (!grounded) * 0.3),
             player_spd * GetFrameTime() * (1.0 - (!grounded) * 0.3),
             player_spd * GetFrameTime() * (1.0 - (!grounded) * 0.3),
         }
     );
+
+    CameraMoveForward(&camera, a.z, true);
+    CameraMoveRight(&camera, a.x, true);
 
     if (camera.position.y <= 2){
         camera.position.y = 2;
@@ -154,19 +154,8 @@ void UpdateDrawFrame(void)
     if (!grounded)
         grav -= 9.8 * GetFrameTime();
 
-    Vector3 move = Vector3Add((Vector3){0, grav, 0}, a);
-    camera.position = Vector3Add(camera.position, move);
-
-    // // Initialize the forward, right, and up vectors
-    Vector3 forward = {0, 0, -1};
-    Vector3 right = {1, 0, 0};
-    Vector3 up = {0, 1, 0};
-
-    forward = Vector3RotateByAxisAngle(forward, up, yaw);
-    right = Vector3RotateByAxisAngle(right, up, yaw);
-    forward = Vector3RotateByAxisAngle(forward, right, pitch);
-
-    camera.target = Vector3Add(camera.position, forward);
+    // todo, jump, climb
+    CameraMoveUp(&camera, grav);
 
     // Draw
     //----------------------------------------------------------------------------------
