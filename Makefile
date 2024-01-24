@@ -37,6 +37,7 @@ else ifeq ($(PLATFORM),PLATFORM_DESKTOP)
 		UNAMEOS = $(shell uname)
 		ifeq ($(UNAMEOS),Linux)
 			PLATFORM_OS = LINUX
+			CFLAGS += -g -fsanitize=address
 			LFLAGS += -lGL -lrt -ldl -lm -lX11
 		endif
 		ifeq ($(UNAMEOS),Darwin)

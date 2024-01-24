@@ -58,6 +58,7 @@ Camera3D camera = { 0 };
 //------------------------------------------------------------------------------------
 int main(void)
 {
+#define _DEBUG 1
 #if !defined(_DEBUG)
     SetTraceLogLevel(LOG_NONE);         // Disable raylib trace log messsages
 #endif
@@ -65,12 +66,13 @@ int main(void)
     // Initialization
     //--------------------------------------------------------------------------------------
     InitWindow(screenWidth, screenHeight, "crayjam");
+    // ToggleFullscreen();
 
     res_init();
 
     camera.fovy = 45;
     camera.projection = CAMERA_PERSPECTIVE;
-    camera.position = (Vector3){ 1, 10, 1 };
+    camera.position = (Vector3){ 1, 1000, 1 };
     camera.up = (Vector3){0,1,0};
     
     // Render texture to draw full screen, enables screen scaling
@@ -109,7 +111,6 @@ bool grounded = false;
 float grav = 0;
 float yaw = 0;
 float pitch = 0;
-Vector3 position = { 1, 10, 1 };
 
 //--------------------------------------------------------------------------------------------
 // Module functions definition
@@ -145,14 +146,36 @@ void UpdateDrawFrame(void)
     CameraMoveForward(&camera, a.z, true);
     CameraMoveRight(&camera, a.x, true);
 
-    if (camera.position.y <= 2){
-        camera.position.y = 2;
+    fprintf(stderr, "vc: %d\n", level_model.meshes[0].vertexCount);
+    fprintf(stderr, "tc: %d\n", level_model.meshes[0].triangleCount);
+    for(int i = 0; i < level_model.meshes[0].triangleCount * 3; i++){
+        fprintf(stderr, "ii[%d]: %d\n", i, level_model.meshes[0].indices[i]);
+    }
+
+    Ray downray = {.position = camera.position, .direction = {0,1,0} };
+    RayCollision r = { 0 };
+    for(int i = 0; i < level_model.meshes[0].vertexCount; i++){
+        float * triangles = &level_model.meshes[0].vertices[i * 3 * 3];
+        r = GetRayCollisionTriangle(
+                downray,
+                (Vector3){triangles[0], triangles[1], triangles[2]},
+                (Vector3){triangles[3], triangles[4], triangles[5]},
+                (Vector3){triangles[6], triangles[7], triangles[8]}
+            );
+        if(r.hit){
+            break;
+        }
+    }
+
+    if (r.hit && camera.position.y <= r.point.y + 2){
+        camera.position.y = r.point.y + 2;
         grounded = true;
         grav = 0;
     }
 
-    if (!grounded)
+    if (!grounded){
         grav -= 9.8 * GetFrameTime();
+    }
 
     // todo, jump, climb
     CameraMoveUp(&camera, grav);
