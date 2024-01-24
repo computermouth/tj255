@@ -125,11 +125,11 @@ void UpdateDrawFrame(void)
 
     Vector2 md = GetMouseDelta();
     float mouse_spd = 0.0675;
-    CameraYaw(&camera, -md.x * mouse_spd * GetFrameTime(), false);
-    CameraPitch(&camera, -md.y * mouse_spd * GetFrameTime(), true, false, false);
+    CameraYaw(&camera, -md.x * mouse_spd / 50, false);
+    CameraPitch(&camera, -md.y * mouse_spd / 50, true, false, false);
 
     // player acceleration (input)
-    float player_spd = 10.0;
+    float player_spd = 20.0;
     Vector3 a = Vector3Multiply(
         (Vector3){
             IsKeyDown(KEY_D) - IsKeyDown(KEY_A),
@@ -146,39 +146,48 @@ void UpdateDrawFrame(void)
     CameraMoveForward(&camera, a.z, true);
     CameraMoveRight(&camera, a.x, true);
 
-    fprintf(stderr, "vc: %d\n", level_model.meshes[0].vertexCount);
-    fprintf(stderr, "tc: %d\n", level_model.meshes[0].triangleCount);
-    for(int i = 0; i < level_model.meshes[0].triangleCount * 3; i++){
-        fprintf(stderr, "ii[%d]: %d\n", i, level_model.meshes[0].indices[i]);
-    }
+    // fprintf(stderr, "vc: %d\n", level_model.meshes[0].vertexCount);
+    // fprintf(stderr, "tc: %d\n", level_model.meshes[0].triangleCount);
+    // for(int i = 0; i < level_model.meshes[0].triangleCount * 3; i++){
+    //     fprintf(stderr, "ii[%d]: %d\n", i, level_model.meshes[0].indices[i]);
+    // }
 
-    Ray downray = {.position = camera.position, .direction = {0,1,0} };
+
+    Ray downray = {.position = camera.position, .direction = {0,-1,0}};
     RayCollision r = { 0 };
-    for(int i = 0; i < level_model.meshes[0].vertexCount; i++){
-        float * triangles = &level_model.meshes[0].vertices[i * 3 * 3];
+    Vector3 hit_tri[3] = { 0 };
+    for(int i = 0; i < level_model.meshes[0].triangleCount; i++){
+        unsigned short * ind = &level_model.meshes[0].indices[i * 3];
+        float * t1 = &level_model.meshes[0].vertices[ind[0] * 3]; 
+        float * t2 = &level_model.meshes[0].vertices[ind[1] * 3]; 
+        float * t3 = &level_model.meshes[0].vertices[ind[2] * 3]; 
         r = GetRayCollisionTriangle(
                 downray,
-                (Vector3){triangles[0], triangles[1], triangles[2]},
-                (Vector3){triangles[3], triangles[4], triangles[5]},
-                (Vector3){triangles[6], triangles[7], triangles[8]}
+                (Vector3){t1[0], t1[1], t1[2]},
+                (Vector3){t2[0], t2[1], t2[2]},
+                (Vector3){t3[0], t3[1], t3[2]}
             );
         if(r.hit){
+            hit_tri[0] = (Vector3){t1[0], t1[1], t1[2]};
+            hit_tri[1] = (Vector3){t2[0], t2[1], t2[2]};
+            hit_tri[2] = (Vector3){t3[0], t3[1], t3[2]};
             break;
         }
     }
 
-    if (r.hit && camera.position.y <= r.point.y + 2){
-        camera.position.y = r.point.y + 2;
-        grounded = true;
-        grav = 0;
-    }
-
-    if (!grounded){
-        grav -= 9.8 * GetFrameTime();
-    }
-
-    // todo, jump, climb
     CameraMoveUp(&camera, grav);
+
+    if (r.hit && camera.position.y - r.point.y <= 2){
+        float diff = (r.point.y + 2) - camera.position.y;
+        fprintf(stderr, "p.y: %f\n", camera.position.y);
+        grav = 0;
+        CameraMoveUp(&camera, diff);
+    } else if (r.hit) {
+        grav -= 9.8 * GetFrameTime();
+    } else if (!r.hit){
+        CameraMoveForward(&camera, -a.z, true);
+        CameraMoveRight(&camera, -a.x, true);
+    }
 
     // Draw
     //----------------------------------------------------------------------------------
@@ -191,9 +200,19 @@ void UpdateDrawFrame(void)
         DrawRectangle(10, 10, screenWidth - 20, screenHeight - 20, SKYBLUE);
         
         BeginMode3D(camera);
-            DrawModel(level_model, (Vector3){0}, .5, WHITE);
-            DrawModelWires(level_model, (Vector3){0}, .5, BLACK);
+            DrawModel(level_model, (Vector3){0}, 1, WHITE);
+            DrawModelWires(level_model, (Vector3){0}, 1, BLACK);
+
+            Color tr = RED;
+            tr.a = 127;
+
+            if(r.hit){
+                DrawTriangle3D(hit_tri[0], hit_tri[1], hit_tri[2], tr);
+            }
+
         EndMode3D();
+
+        DrawFPS(10, 10);
         
     EndTextureMode();
     
