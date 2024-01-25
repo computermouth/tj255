@@ -70,7 +70,7 @@ int main(void)
 
     res_init();
 
-    camera.fovy = 45;
+    camera.fovy = 90;
     camera.projection = CAMERA_PERSPECTIVE;
     camera.position = (Vector3){ 1, 1000, 1 };
     camera.up = (Vector3){0,1,0};
@@ -129,7 +129,7 @@ void UpdateDrawFrame(void)
     CameraPitch(&camera, -md.y * mouse_spd / 50, true, false, false);
 
     // player acceleration (input)
-    float player_spd = 20.0;
+    float player_spd = 40.0;
     Vector3 a = Vector3Multiply(
         (Vector3){
             IsKeyDown(KEY_D) - IsKeyDown(KEY_A),
@@ -142,6 +142,12 @@ void UpdateDrawFrame(void)
             player_spd * GetFrameTime() * (1.0 - (!grounded) * 0.3),
         }
     );
+
+    if(IsKeyPressed(KEY_SPACE)){
+        grav += 2;
+        CameraMoveUp(&camera, grav);
+        fprintf(stderr, "grav: %f\n", grav);
+    }
 
     CameraMoveForward(&camera, a.z, true);
     CameraMoveRight(&camera, a.x, true);
@@ -179,11 +185,10 @@ void UpdateDrawFrame(void)
 
     if (r.hit && camera.position.y - r.point.y <= 2){
         float diff = (r.point.y + 2) - camera.position.y;
-        fprintf(stderr, "p.y: %f\n", camera.position.y);
         grav = 0;
         CameraMoveUp(&camera, diff);
     } else if (r.hit) {
-        grav -= 9.8 * GetFrameTime();
+        grav -= 9.8/2 * GetFrameTime();
     } else if (!r.hit){
         CameraMoveForward(&camera, -a.z, true);
         CameraMoveRight(&camera, -a.x, true);
