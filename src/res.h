@@ -12,5 +12,7 @@ extern Texture night_tex;
 extern Model tree_model;
 extern Music song;
 extern Sound footstep_snd;
+extern Model pumpkin_attack[8];
+extern Model pumpkin_walk[4];
 
 #endif
