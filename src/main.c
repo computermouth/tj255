@@ -72,7 +72,7 @@ int main(void)
 
     camera.fovy = 90;
     camera.projection = CAMERA_PERSPECTIVE;
-    camera.position = (Vector3){ 1, 1000, 1 };
+    camera.position = (Vector3){ 1, 500, 1 };
     camera.up = (Vector3){0,1,0};
     
     // Render texture to draw full screen, enables screen scaling
@@ -105,6 +105,19 @@ int main(void)
     //--------------------------------------------------------------------------------------
 
     return 0;
+}
+
+float yaw_from_camera(Camera3D camera) {
+    // Calculate direction vector from camera position to target
+    Vector3 direction = Vector3Subtract(camera.target, camera.position);
+    // Calculate yaw angle using atan2
+    float yaw = atan2f(direction.z, direction.x);
+    // Convert yaw to degrees
+    yaw = yaw * (180.0f / PI);
+    // Adjust yaw to be in range [0, 360)
+    if (yaw < 0)
+        yaw += 360.0f;
+    return yaw;
 }
 
 bool grounded = false;
@@ -202,13 +215,18 @@ void UpdateDrawFrame(void)
         ClearBackground(RAYWHITE);
         
         // TODO: Draw your game screen here
-        DrawRectangle(10, 10, screenWidth - 20, screenHeight - 20, SKYBLUE);
+        DrawRectangle(10, 10, screenWidth - 20, screenHeight - 20, BLACK);
         
         BeginMode3D(camera);
-            DrawModel(level_model, (Vector3){0}, 1, WHITE);
-            DrawModelWires(level_model, (Vector3){0}, 1, BLACK);
+            // DrawModel(level_model, (Vector3){0}, 1, WHITE);
+            DrawMesh(level_model.meshes[0], level_model.materials[1], MatrixIdentity());
+            DrawModelWires(level_model, (Vector3){0}, 1, (Color){64,64,64,127});
 
-            Color tr = RED;
+            for(int i = 0; i < tree_model.meshCount; i++){
+                DrawMesh(tree_model.meshes[i], tree_model.materials[(i % 2) + 1], MatrixIdentity());
+            }
+
+            Color tr = BLACK;
             tr.a = 127;
 
             if(r.hit){
@@ -220,13 +238,22 @@ void UpdateDrawFrame(void)
         DrawFPS(10, 10);
         
     EndTextureMode();
-    
+
     // Render to screen (main framebuffer)
     BeginDrawing();
         ClearBackground(RAYWHITE);
         
         // Draw render texture to screen, scaled if required
         DrawTexturePro(target.texture, (Rectangle){ 0, 0, (float)target.texture.width, -(float)target.texture.height }, (Rectangle){ 0, 0, (float)target.texture.width, (float)target.texture.height }, (Vector2){ 0, 0 }, 0.0f, WHITE);
+        DrawTexturePro(night_tex, (Rectangle){0,0,1,1}, (Rectangle){0,0,screenWidth,screenHeight}, (Vector2){0}, 0, (Color){255,255,255,127});
+        DrawTexturePro(
+            flashlight_tex,
+            (Rectangle){0, 0, flashlight_tex.width, flashlight_tex.height},
+            (Rectangle){flashlight_tex.width / 4., flashlight_tex.height / 8., flashlight_tex.width, flashlight_tex.height},
+            (Vector2){flashlight_tex.width/2., flashlight_tex.height/2.},
+            yaw_from_camera(camera),
+            WHITE
+        );
 
         // TODO: Draw everything that requires to be drawn at this point, maybe UI?
 
