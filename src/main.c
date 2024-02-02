@@ -67,8 +67,10 @@ int main(void)
     //--------------------------------------------------------------------------------------
     InitWindow(screenWidth, screenHeight, "crayjam");
     // ToggleFullscreen();
+    InitAudioDevice();
 
     res_init();
+    PlayMusicStream(song);
 
     camera.fovy = 90;
     camera.projection = CAMERA_PERSPECTIVE;
@@ -124,6 +126,7 @@ bool grounded = false;
 float grav = 0;
 float yaw = 0;
 float pitch = 0;
+float footstep_time = 0;
 
 //--------------------------------------------------------------------------------------------
 // Module functions definition
@@ -135,6 +138,13 @@ void UpdateDrawFrame(void)
     //----------------------------------------------------------------------------------
     // TODO: Update variables / Implement example logic at this point
     //----------------------------------------------------------------------------------
+    UpdateMusicStream(song);
+
+    footstep_time += GetFrameTime();
+
+    // just in case
+    if(camera.position.y < -40)
+        camera.position = (Vector3){0, 10, 0};
 
     Vector2 md = GetMouseDelta();
     float mouse_spd = 0.0675;
@@ -200,6 +210,11 @@ void UpdateDrawFrame(void)
         float diff = (r.point.y + 2) - camera.position.y;
         grav = 0;
         CameraMoveUp(&camera, diff);
+        fprintf(stderr, "g: %f a.z: %f a.x: %f foot: %f\n", grav, a.z, a.x, footstep_time);
+        if(grav == 0 && (a.z != 0 || a.x != 0) && footstep_time > 0.5){
+            PlaySound(footstep_snd);
+            footstep_time = 0;
+        }
     } else if (r.hit) {
         grav -= 9.8/2 * GetFrameTime();
     } else if (!r.hit){
