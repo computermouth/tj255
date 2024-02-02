@@ -75,7 +75,7 @@ int main(void)
 
     camera.fovy = 90;
     camera.projection = CAMERA_PERSPECTIVE;
-    camera.position = (Vector3){ 1, 500, 1 };
+    camera.position = (Vector3){ 100, 500, 100 };
     camera.up = (Vector3){0,1,0};
     
     // Render texture to draw full screen, enables screen scaling
@@ -128,7 +128,7 @@ float grav = 0;
 float yaw = 0;
 float pitch = 0;
 float footstep_time = 0;
-Vector3 pumpkin_pos = { 0, 10, 0 };
+Vector3 pumpkin_pos = { 10, 10, 10 };
 bool pumpkin_spawned = true;
 
 //--------------------------------------------------------------------------------------------
@@ -178,10 +178,10 @@ void UpdateDrawFrame(void)
     CameraMoveRight(&camera, a.x, true);
 
     // if (pumpkin_spawned){
-    //     Vector2 toward = Vector2Normalize(Vector2MoveTowards((Vector2){pumpkin_pos.x, pumpkin_pos.z}, (Vector2){camera.position.x, camera.position.z}, 100));
+    //     Vector2 toward = Vector2Subtract((Vector2){camera.position.x, camera.position.z},(Vector2){pumpkin_pos.x, pumpkin_pos.z});
     //     fprintf(stderr, "tw.x: %f tw.y: %f\n", toward.x, toward.y);
-    //     pumpkin_pos.x -= toward.y;
-    //     pumpkin_pos.z -= toward.x;
+    //     pumpkin_pos.x += toward.x;
+    //     pumpkin_pos.z += toward.y;
 
     //     // put pumpkin on ground
     //     Ray downray = {.position = pumpkin_pos, .direction = {0,-1,0}};
