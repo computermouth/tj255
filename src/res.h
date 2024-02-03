@@ -14,5 +14,6 @@ extern Music song;
 extern Sound footstep_snd;
 extern Model pumpkin_attack[8];
 extern Model pumpkin_walk[4];
+extern Sound pumpkin_fs_snd;
 
 #endif

@@ -40,6 +40,11 @@
     #define LOG(...)
 #endif
 
+Vector3 origin = {500, 500, 500};
+Vector3 get_world_pos(Vector3 v){
+    return Vector3Add(v, origin);
+}
+
 //----------------------------------------------------------------------------------
 // Global Variables Definition
 //----------------------------------------------------------------------------------
@@ -53,6 +58,15 @@ static RenderTexture2D target = { 0 };  // Render texture to render our game
 //----------------------------------------------------------------------------------
 static void UpdateDrawFrame(void);      // Update and Draw one frame
 
+bool grounded = false;
+float grav = 0;
+float yaw = 0;
+float pitch = 0;
+float footstep_time = 0;
+Vector3 pumpkin_pos = { 0 };
+bool pumpkin_spawned = false;
+float pumpkin_footstep_time = 0;
+float pumpkin_speed = 0.1;
 Camera3D camera = { 0 };
 //------------------------------------------------------------------------------------
 // Program main entry point
@@ -75,8 +89,10 @@ int main(void)
 
     camera.fovy = 90;
     camera.projection = CAMERA_PERSPECTIVE;
-    camera.position = (Vector3){ 100, 500, 100 };
+    camera.position = get_world_pos((Vector3){ 0, 500, 50 });
     camera.up = (Vector3){0,1,0};
+
+    pumpkin_pos = get_world_pos((Vector3){ 0, 10, 0 });
     
     // Render texture to draw full screen, enables screen scaling
     // NOTE: If screen is scaled, mouse input should be scaled proportionally
@@ -123,14 +139,6 @@ float yaw_from_camera(Camera3D camera) {
     return yaw;
 }
 
-bool grounded = false;
-float grav = 0;
-float yaw = 0;
-float pitch = 0;
-float footstep_time = 0;
-Vector3 pumpkin_pos = { 10, 10, 10 };
-bool pumpkin_spawned = true;
-
 //--------------------------------------------------------------------------------------------
 // Module functions definition
 //--------------------------------------------------------------------------------------------
@@ -145,9 +153,13 @@ void UpdateDrawFrame(void)
 
     footstep_time += GetFrameTime();
 
+    if (pumpkin_spawned == false){
+        pumpkin_spawned = true;
+    }
+
     // just in case
-    if(camera.position.y < -40)
-        camera.position = (Vector3){0, 10, 0};
+    if(camera.position.y < (origin.y - 40))
+        camera.position = get_world_pos((Vector3){0, 10, 0});
 
     Vector2 md = GetMouseDelta();
     float mouse_spd = 0.0675;
@@ -157,11 +169,11 @@ void UpdateDrawFrame(void)
     // player acceleration (input)
     float player_spd = 40.0;
     Vector3 a = Vector3Multiply(
-        (Vector3){
+        Vector3Normalize((Vector3){
             IsKeyDown(KEY_D) - IsKeyDown(KEY_A),
             0,
             IsKeyDown(KEY_W) - IsKeyDown(KEY_S),
-        },
+        }),
         (Vector3){
             player_spd * GetFrameTime() * (1.0 - (!grounded) * 0.3),
             player_spd * GetFrameTime() * (1.0 - (!grounded) * 0.3),
@@ -177,39 +189,44 @@ void UpdateDrawFrame(void)
     CameraMoveForward(&camera, a.z, true);
     CameraMoveRight(&camera, a.x, true);
 
-    // if (pumpkin_spawned){
-    //     Vector2 toward = Vector2Subtract((Vector2){camera.position.x, camera.position.z},(Vector2){pumpkin_pos.x, pumpkin_pos.z});
-    //     fprintf(stderr, "tw.x: %f tw.y: %f\n", toward.x, toward.y);
-    //     pumpkin_pos.x += toward.x;
-    //     pumpkin_pos.z += toward.y;
+    if (pumpkin_spawned){
+        Vector2 toward = Vector2Subtract((Vector2){camera.position.x, camera.position.z},(Vector2){pumpkin_pos.x, pumpkin_pos.z});
+        // fprintf(stderr, "tw.x: %f tw.y: %f\n", toward.x, toward.y);
+        pumpkin_pos.x += toward.x * pumpkin_speed * GetFrameTime();
+        pumpkin_pos.z += toward.y * pumpkin_speed * GetFrameTime();
 
-    //     // put pumpkin on ground
-    //     Ray downray = {.position = pumpkin_pos, .direction = {0,-1,0}};
-    //     RayCollision r = { 0 };
-    //     for(int i = 0; i < level_model.meshes[0].triangleCount; i++){
-    //         unsigned short * ind = &level_model.meshes[0].indices[i * 3];
-    //         float * t1 = &level_model.meshes[0].vertices[ind[0] * 3]; 
-    //         float * t2 = &level_model.meshes[0].vertices[ind[1] * 3]; 
-    //         float * t3 = &level_model.meshes[0].vertices[ind[2] * 3]; 
-    //         r = GetRayCollisionTriangle(
-    //                 downray,
-    //                 (Vector3){t1[0], t1[1], t1[2]},
-    //                 (Vector3){t2[0], t2[1], t2[2]},
-    //                 (Vector3){t3[0], t3[1], t3[2]}
-    //             );
-    //         if(r.hit){
-    //             // pumpkin_pos.y = r.point.y + 1;
-    //             break;
-    //         }
-    //     }
+        pumpkin_footstep_time += GetFrameTime();
+        if(pumpkin_footstep_time > 0.47){
+            pumpkin_footstep_time = 0;
+            float d = Vector3Distance(camera.position, pumpkin_pos);
+            float v = (100 - Clamp(d, 1, 100)) / 100;
+            SetSoundVolume(pumpkin_fs_snd, v);
+            SetSoundPitch(pumpkin_fs_snd, (float)GetRandomValue(150, 80) / 100.0);
+            // SetSoundPan(Sound sound, float pan);
+            PlaySound(pumpkin_fs_snd);
+        }
 
-    // }
+        // put pumpkin on ground
+        Ray downray = {.position = Vector3Add(pumpkin_pos, (Vector3){0,100,0}), .direction = {0,-1,0}};
+        RayCollision r = { 0 };
+        for(int i = 0; i < level_model.meshes[0].triangleCount; i++){
+            unsigned short * ind = &level_model.meshes[0].indices[i * 3];
+            float * t1 = &level_model.meshes[0].vertices[ind[0] * 3]; 
+            float * t2 = &level_model.meshes[0].vertices[ind[1] * 3]; 
+            float * t3 = &level_model.meshes[0].vertices[ind[2] * 3]; 
+            r = GetRayCollisionTriangle(
+                    downray,
+                    get_world_pos((Vector3){t1[0], t1[1], t1[2]}),
+                    get_world_pos((Vector3){t2[0], t2[1], t2[2]}),
+                    get_world_pos((Vector3){t3[0], t3[1], t3[2]})
+                );
+            if(r.hit){
+                pumpkin_pos.y = r.point.y;
+                break;
+            }
+        }
 
-    // fprintf(stderr, "vc: %d\n", level_model.meshes[0].vertexCount);
-    // fprintf(stderr, "tc: %d\n", level_model.meshes[0].triangleCount);
-    // for(int i = 0; i < level_model.meshes[0].triangleCount * 3; i++){
-    //     fprintf(stderr, "ii[%d]: %d\n", i, level_model.meshes[0].indices[i]);
-    // }
+    }
 
 
     Ray downray = {.position = camera.position, .direction = {0,-1,0}};
@@ -222,14 +239,14 @@ void UpdateDrawFrame(void)
         float * t3 = &level_model.meshes[0].vertices[ind[2] * 3]; 
         r = GetRayCollisionTriangle(
                 downray,
-                (Vector3){t1[0], t1[1], t1[2]},
-                (Vector3){t2[0], t2[1], t2[2]},
-                (Vector3){t3[0], t3[1], t3[2]}
+                get_world_pos((Vector3){t1[0], t1[1], t1[2]}),
+                get_world_pos((Vector3){t2[0], t2[1], t2[2]}),
+                get_world_pos((Vector3){t3[0], t3[1], t3[2]})
             );
         if(r.hit){
-            hit_tri[0] = (Vector3){t1[0], t1[1], t1[2]};
-            hit_tri[1] = (Vector3){t2[0], t2[1], t2[2]};
-            hit_tri[2] = (Vector3){t3[0], t3[1], t3[2]};
+            hit_tri[0] = get_world_pos((Vector3){t1[0], t1[1], t1[2]});
+            hit_tri[1] = get_world_pos((Vector3){t2[0], t2[1], t2[2]});
+            hit_tri[2] = get_world_pos((Vector3){t3[0], t3[1], t3[2]});
             break;
         }
     }
@@ -241,6 +258,7 @@ void UpdateDrawFrame(void)
         grav = 0;
         CameraMoveUp(&camera, diff);
         if(grav == 0 && (a.z != 0 || a.x != 0) && footstep_time > 0.5){
+            SetSoundPitch(footstep_snd, (float)GetRandomValue(150, 80) / 100.0);
             PlaySound(footstep_snd);
             footstep_time = 0;
         }
@@ -267,16 +285,19 @@ f = fmodf(f, 4.0);
         
         BeginMode3D(camera);
             // DrawModel(level_model, (Vector3){0}, 1, WHITE);
-            DrawMesh(level_model.meshes[0], level_model.materials[1], MatrixIdentity());
-            DrawModelWires(level_model, (Vector3){0}, 1, (Color){64,64,64,127});
+            DrawMesh(level_model.meshes[0], level_model.materials[1], MatrixTranslate(origin.x, origin.y, origin.z));
+            DrawModelWires(level_model, origin, 1, (Color){64,64,64,127});
 
             for(int i = 0; i < tree_model.meshCount; i++){
-                DrawMesh(tree_model.meshes[i], tree_model.materials[(i % 2) + 1], MatrixIdentity());
+                DrawMesh(tree_model.meshes[i], tree_model.materials[(i % 2) + 1], MatrixTranslate(origin.x, origin.y, origin.z));
             }
 
             if (pumpkin_spawned){
                 // DrawMesh(pumpkin_attack[(size_t)f].meshes[0], pumpkin_attack[0].materials[1], MatrixIdentity());
-                DrawMesh(pumpkin_walk[(size_t)f].meshes[0], pumpkin_walk[0].materials[1], MatrixAdd(MatrixIdentity(), MatrixTranslate(pumpkin_pos.x, pumpkin_pos.y, pumpkin_pos.z)));
+                float a = atan2f(camera.position.z - pumpkin_pos.z, camera.position.x - pumpkin_pos.x) - PI / 2;
+                Matrix pm = MatrixRotateY(-a);
+                pm = MatrixMultiply(pm, MatrixTranslate(pumpkin_pos.x, pumpkin_pos.y, pumpkin_pos.z));
+                DrawMesh(pumpkin_walk[(size_t)f].meshes[0], pumpkin_walk[0].materials[1], pm);
             }
 
             Color tr = BLACK;

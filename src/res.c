@@ -14,6 +14,7 @@ Texture flashlight_tex = {0};
 Texture night_tex = { 0 };
 Music song = { 0 };
 Sound footstep_snd = { 0 };
+Sound pumpkin_fs_snd = { 0 };
 
 void res_init(){
 
@@ -43,6 +44,9 @@ void res_init(){
 
     footstep_snd = LoadSound("res/footstep.wav");
     SetSoundVolume(footstep_snd, .7);
+
+    pumpkin_fs_snd = LoadSound("res/pumpkin_footsteps.wav");
+    SetSoundVolume(pumpkin_fs_snd, .7);
 
     night_tex = LoadTextureFromImage(GenImageColor(1, 1, DARKBLUE));
 }
